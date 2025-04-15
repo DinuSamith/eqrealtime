@@ -1,14 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>eqrealtime.app - Real-Time Earthquake Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#d32f2f">
+  <link rel="manifest" href="manifest.json" />
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    .map-control {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
   </style>
   <script>
@@ -20,13 +33,38 @@
       const map = new google.maps.Map(document.getElementById("map"), {
         zoom: 2,
         center: { lat: 0, lng: 0 },
+        mapTypeId: 'terrain',
       });
 
-      // Use a larger feed to ensure results show up
+      // Try to get user's current location
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          new google.maps.Marker({
+            position: userLocation,
+            map: map,
+            title: "You are here",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 7,
+              fillColor: "#3366FF",
+              fillOpacity: 0.9,
+              strokeWeight: 1,
+            }
+          });
+          map.setCenter(userLocation);
+          map.setZoom(5);
+        });
+      }
+
+      // Load earthquake data
       map.data.loadGeoJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson");
 
       map.data.setStyle((feature) => {
-        const magnitude = feature.getProperty("mag");
+        const magnitude = feature.getProperty("mag") || 1;
         return {
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
@@ -37,15 +75,23 @@
           },
         };
       });
+
+      // Add info window on click
+      const infoWindow = new google.maps.InfoWindow();
+      map.data.addListener("click", (event) => {
+        const mag = event.feature.getProperty("mag");
+        const place = event.feature.getProperty("place");
+        const time = new Date(event.feature.getProperty("time")).toLocaleString();
+        const content = `<strong>Magnitude:</strong> ${mag}<br><strong>Location:</strong> ${place}<br><strong>Time:</strong> ${time}`;
+        infoWindow.setContent(content);
+        infoWindow.setPosition(event.latLng);
+        infoWindow.open(map);
+      });
     }
   </script>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Replace YOUR_API_KEY below with your real key -->
+  <!-- IMPORTANT: Using your real API key here -->
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBysA3ZeG4puhgIqvN8puRy9EDuxgzRtpA">
-  </script>
-</body>
-</html>
