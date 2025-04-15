@@ -1,6 +1,6 @@
 {
   "name": "eqrealtime.app",
-  "short_name": "Earthquake Map",
+  "short_name": "EarthquakeMap",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",

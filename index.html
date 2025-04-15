@@ -13,30 +13,21 @@
       padding: 0;
       font-family: Arial, sans-serif;
     }
-    .map-control {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-      z-index: 5;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    }
   </style>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register("service-worker.js");
     }
 
+    let map;
+
     function initMap() {
-      const map = new google.maps.Map(document.getElementById("map"), {
+      map = new google.maps.Map(document.getElementById("map"), {
         zoom: 2,
         center: { lat: 0, lng: 0 },
         mapTypeId: 'terrain',
       });
 
-      // Try to get user's current location
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((position) => {
           const userLocation = {
@@ -60,41 +51,48 @@
         });
       }
 
-      // Load earthquake data
-      map.data.loadGeoJson("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson");
+      fetchEarthquakeData();
+    }
 
-      map.data.setStyle((feature) => {
-        const magnitude = feature.getProperty("mag") || 1;
-        return {
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: Math.pow(2, magnitude) / 2,
-            fillColor: "red",
-            fillOpacity: 0.6,
-            strokeWeight: 0.5,
-          },
-        };
-      });
+    function fetchEarthquakeData() {
+      fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson")
+        .then(response => response.json())
+        .then(data => {
+          data.features.forEach(eq => {
+            const coords = eq.geometry.coordinates;
+            const latLng = { lat: coords[1], lng: coords[0] };
+            const mag = eq.properties.mag || 1;
+            const place = eq.properties.place;
+            const time = new Date(eq.properties.time).toLocaleString();
 
-      // Add info window on click
-      const infoWindow = new google.maps.InfoWindow();
-      map.data.addListener("click", (event) => {
-        const mag = event.feature.getProperty("mag");
-        const place = event.feature.getProperty("place");
-        const time = new Date(event.feature.getProperty("time")).toLocaleString();
-        const content = `<strong>Magnitude:</strong> ${mag}<br><strong>Location:</strong> ${place}<br><strong>Time:</strong> ${time}`;
-        infoWindow.setContent(content);
-        infoWindow.setPosition(event.latLng);
-        infoWindow.open(map);
-      });
+            const marker = new google.maps.Marker({
+              position: latLng,
+              map: map,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: Math.pow(2, mag) / 2,
+                fillColor: "red",
+                fillOpacity: 0.6,
+                strokeWeight: 0.5
+              }
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+              content: `<strong>Magnitude:</strong> ${mag}<br><strong>Location:</strong> ${place}<br><strong>Time:</strong> ${time}`
+            });
+
+            marker.addListener("click", () => {
+              infoWindow.open(map, marker);
+            });
+          });
+        });
     }
   </script>
 </head>
 <body>
   <div id="map"></div>
-
-  <!-- IMPORTANT: Using your real API key here -->
-  <script async
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBysA3ZeG4puhgIqvN8puRy9EDuxgzRtpA">
-</script>
-
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBysA3ZeG4puhgIqvN8puRy9EDuxgzRtpA&callback=initMap">
+  </script>
+</body>
+</html>
